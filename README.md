@@ -33,7 +33,7 @@ conda install jupyterlab
 
 Se você está no Colab, basta instalar o `eemont` com `!pip install eemont`. Você também irá instalar o `geemap-tools` na sua máquina virtual do colab.
 ```
-!pip install git+https://github.com/seuusuario/geemap-tools-dev.git
+!pip install git+https://github.com/andrebelem/geemap-tools-dev.git
 ```
 (Atenção: Alguns recursos de geemap podem não funcionar perfeitamente no Colab devido a limitações do ambiente.)
 
