@@ -1,10 +1,18 @@
+# Python cache
 __pycache__/
 *.pyc
 *.pyo
-*.pyd 
+*.pyd
+
+# Virtual environments
 .Python
-build/ 
-develop-eggs/ 
+env/
+venv/
+ENV/
+
+# Packaging
+build/
+develop-eggs/
 dist/
 downloads/
 eggs/
@@ -17,4 +25,9 @@ var/
 *.egg-info/
 .installed.cfg
 *.egg
+
+# Jupyter Notebook checkpoints
 .ipynb_checkpoints/
+
+# Sphinx documentation build
+docs/build/
