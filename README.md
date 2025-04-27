@@ -41,4 +41,7 @@ Contato
 Dúvidas, sugestões de melhorias ou novas funções?
 Entre em contato: [andrebelem@id.uff.br](mailto:andrebelem@id.uff.br)
 
+### Quer um assistente para usar esse repo ?
+
+Acesse o DeepWiki do geemap-tools ! [https://deepwiki.com/andrebelem/geemap-tools](https://deepwiki.com/andrebelem/geemap-tools)
 
