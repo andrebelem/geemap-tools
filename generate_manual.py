@@ -13,7 +13,7 @@ with open(file_path, "r", encoding="utf-8") as f:
     content = f.read()
 
 # Expressão regular para encontrar funções com docstring entre aspas simples triplas
-pattern = r"def (\w+)\((.*?)\):\s+'''(.*?)'''"
+pattern = r'def (\w+)\((.*?)\):\s+"""(.*?)"""'
 matches = re.findall(pattern, content, re.DOTALL)
 
 # Começa a construir o conteúdo do manual em Markdown
