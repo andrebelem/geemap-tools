@@ -1,2 +1,5 @@
-# Auto detect text files and perform LF normalization
-* text=auto
+*.ipynb linguist-language=Python
+*.py linguist-language=Python
+data/** linguist-vendored
+notebooks/** linguist-documentation
+outputs/** linguist-generated
