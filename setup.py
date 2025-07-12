@@ -5,6 +5,7 @@ setup(
     version='0.1.0',
     packages=find_packages(),
     install_requires=[
+        'earthengine-api>=0.1',
         'eemont>=0.3.5',
         'pyproj>=3.0',
         'pandas>=1.2',
