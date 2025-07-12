@@ -95,21 +95,73 @@ Raises:
 
 ### `custom_mask_clouds(img, debug)`
 
-*Sem descrição*
+Aplica uma máscara de nuvens personalizada a uma imagem do Earth Engine.
+
+Suporta imagens com bandas QA_PIXEL (Landsat), SCL (Sentinel-2) ou MSK_CLDPRB (probabilidade de nuvem).
+Para Sentinel-2, utiliza a banda SCL com fallback para MSK_CLDPRB caso a máscara esteja completamente vazia.
+
+Args:
+    img (ee.Image): Imagem de entrada contendo bandas de qualidade relacionadas a nuvens.
+    debug (bool, optional): Se True, imprime mensagens de depuração. Padrão é False.
+
+Returns:
+    ee.Image: Imagem com nuvens mascaradas (pixels de nuvem removidos).
 
 ### `get_clear_sky_percentage(img, roi, debug)`
 
-Calcula a porcentagem de céu claro sobre uma ROI com base na máscara de nuvem.
+Calcula a porcentagem de céu claro (sem nuvens) sobre uma ROI com base na máscara de nuvem da imagem.
+
+Utiliza a função `custom_mask_clouds()` para aplicar a máscara apropriada à imagem.
+A porcentagem é obtida a partir da média da máscara binária (1 = claro, 0 = nublado) sobre a ROI.
+
+Args:
+    img (ee.Image): Imagem do Earth Engine com bandas de máscara de nuvem.
+    roi (ee.Geometry | ee.Feature | ee.FeatureCollection): Região de interesse.
+    debug (bool, optional): Se True, imprime mensagens de depuração. Padrão é False.
+
+Returns:
+    float | None: Porcentagem de pixels com céu claro (0 a 100), ou None se falhar.
 
 ## 📂 Módulo `io`
 
 ### `roi_to_file(roi, filename, format, wrap_geometry)`
 
-*Sem descrição*
+Exporta uma ROI (região de interesse) do Earth Engine para arquivo no disco local.
+
+A ROI pode ser uma `ee.Geometry`, `ee.Feature` ou `ee.FeatureCollection`, e será convertida
+para um arquivo `.geojson` ou `.shp` (compactado como `.zip`) com sistema de referência EPSG:4326.
+
+Args:
+    roi (ee.Geometry | ee.Feature | ee.FeatureCollection): Objeto de entrada do Earth Engine.
+    filename (str): Caminho base (sem extensão) para salvar o arquivo de saída.
+    format (str, optional): Formato de saída. Pode ser `'geojson'` ou `'shp'`. Padrão é `'geojson'`.
+    wrap_geometry (bool, optional): Se `True`, embrulha `ee.Geometry` como `ee.Feature` antes da exportação. Necessário para `ee.Geometry`.
+
+Returns:
+    str: Caminho absoluto do arquivo salvo (ex: `/caminho/arquivo.geojson` ou `/caminho/arquivo.zip`).
+
+Raises:
+    ValueError: Se a geometria for inválida ou não estiver embrulhada corretamente.
+    TypeError: Se o tipo da ROI for incompatível.
+    RuntimeError: Se falhar ao converter para GeoDataFrame ou salvar o arquivo.
 
 ### `file_to_roi(filepath)`
 
-*Sem descrição*
+Converte um arquivo local (GeoJSON, SHP ou ZIP contendo SHP) em uma FeatureCollection do Earth Engine.
+
+O arquivo é lido com `geopandas` e convertido para `ee.FeatureCollection`, com reprojectado para EPSG:4326.
+Suporta arquivos `.geojson`, `.shp` ou `.zip` contendo shapefile.
+
+Args:
+    filepath (str): Caminho para o arquivo de entrada.
+
+Returns:
+    ee.FeatureCollection: Objeto Earth Engine correspondente à geometria do arquivo.
+
+Raises:
+    FileNotFoundError: Se o arquivo não for encontrado.
+    ValueError: Se o zip não contiver um shapefile válido.
+    RuntimeError: Se houver erro ao ler com geopandas ou ao converter para `ee.Feature`.
 
 ## 📂 Módulo `sidra_tools`
 

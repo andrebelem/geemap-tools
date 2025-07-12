@@ -14,6 +14,26 @@ from tempfile import TemporaryDirectory
 
 
 def roi_to_file(roi, filename, format='geojson', wrap_geometry=True):
+    """
+    Exporta uma ROI (região de interesse) do Earth Engine para arquivo no disco local.
+
+    A ROI pode ser uma `ee.Geometry`, `ee.Feature` ou `ee.FeatureCollection`, e será convertida
+    para um arquivo `.geojson` ou `.shp` (compactado como `.zip`) com sistema de referência EPSG:4326.
+
+    Args:
+        roi (ee.Geometry | ee.Feature | ee.FeatureCollection): Objeto de entrada do Earth Engine.
+        filename (str): Caminho base (sem extensão) para salvar o arquivo de saída.
+        format (str, optional): Formato de saída. Pode ser `'geojson'` ou `'shp'`. Padrão é `'geojson'`.
+        wrap_geometry (bool, optional): Se `True`, embrulha `ee.Geometry` como `ee.Feature` antes da exportação. Necessário para `ee.Geometry`.
+
+    Returns:
+        str: Caminho absoluto do arquivo salvo (ex: `/caminho/arquivo.geojson` ou `/caminho/arquivo.zip`).
+
+    Raises:
+        ValueError: Se a geometria for inválida ou não estiver embrulhada corretamente.
+        TypeError: Se o tipo da ROI for incompatível.
+        RuntimeError: Se falhar ao converter para GeoDataFrame ou salvar o arquivo.
+    """
     filename = str(Path(filename).with_suffix(''))
     os.makedirs(os.path.dirname(filename), exist_ok=True)
 
@@ -63,6 +83,23 @@ def roi_to_file(roi, filename, format='geojson', wrap_geometry=True):
 
 
 def file_to_roi(filepath):
+    """
+    Converte um arquivo local (GeoJSON, SHP ou ZIP contendo SHP) em uma FeatureCollection do Earth Engine.
+
+    O arquivo é lido com `geopandas` e convertido para `ee.FeatureCollection`, com reprojectado para EPSG:4326.
+    Suporta arquivos `.geojson`, `.shp` ou `.zip` contendo shapefile.
+
+    Args:
+        filepath (str): Caminho para o arquivo de entrada.
+
+    Returns:
+        ee.FeatureCollection: Objeto Earth Engine correspondente à geometria do arquivo.
+
+    Raises:
+        FileNotFoundError: Se o arquivo não for encontrado.
+        ValueError: Se o zip não contiver um shapefile válido.
+        RuntimeError: Se houver erro ao ler com geopandas ou ao converter para `ee.Feature`.
+    """
     if not os.path.exists(filepath):
         raise FileNotFoundError(f"Arquivo não encontrado: {filepath}")
 

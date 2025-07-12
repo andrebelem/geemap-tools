@@ -2,6 +2,19 @@
 import ee
 
 def custom_mask_clouds(img, debug=False):
+    """
+    Aplica uma máscara de nuvens personalizada a uma imagem do Earth Engine.
+
+    Suporta imagens com bandas QA_PIXEL (Landsat), SCL (Sentinel-2) ou MSK_CLDPRB (probabilidade de nuvem).
+    Para Sentinel-2, utiliza a banda SCL com fallback para MSK_CLDPRB caso a máscara esteja completamente vazia.
+
+    Args:
+        img (ee.Image): Imagem de entrada contendo bandas de qualidade relacionadas a nuvens.
+        debug (bool, optional): Se True, imprime mensagens de depuração. Padrão é False.
+
+    Returns:
+        ee.Image: Imagem com nuvens mascaradas (pixels de nuvem removidos).
+    """
     bands = img.bandNames().getInfo()
 
     if 'QA_PIXEL' in bands:  # Landsat
@@ -43,7 +56,18 @@ def custom_mask_clouds(img, debug=False):
 
 def get_clear_sky_percentage(img, roi, debug=False):
     """
-    Calcula a porcentagem de céu claro sobre uma ROI com base na máscara de nuvem.
+    Calcula a porcentagem de céu claro (sem nuvens) sobre uma ROI com base na máscara de nuvem da imagem.
+
+    Utiliza a função `custom_mask_clouds()` para aplicar a máscara apropriada à imagem.
+    A porcentagem é obtida a partir da média da máscara binária (1 = claro, 0 = nublado) sobre a ROI.
+
+    Args:
+        img (ee.Image): Imagem do Earth Engine com bandas de máscara de nuvem.
+        roi (ee.Geometry | ee.Feature | ee.FeatureCollection): Região de interesse.
+        debug (bool, optional): Se True, imprime mensagens de depuração. Padrão é False.
+
+    Returns:
+        float | None: Porcentagem de pixels com céu claro (0 a 100), ou None se falhar.
     """
     try:
         band_names = img.bandNames()
