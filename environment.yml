@@ -13,7 +13,10 @@ dependencies:
   - matplotlib
   - tqdm
   - pip
+  - seaborn
   - pip:
       - earthengine-api
       - eemont
       - -e .
+      - requests
+      - openpyxl 

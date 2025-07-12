@@ -1,3 +1,41 @@
 [build-system]
-requires = ["setuptools", "wheel"]
+requires = ["setuptools>=61", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "geemap-tools"
+version = "0.1.0"
+description = "Ferramentas auxiliares para Google Earth Engine e geemap"
+readme = "README.md"
+requires-python = ">=3.9"
+authors = [
+  { name="André Belem", email="andrebelem@id.uff.br" }
+]
+license = {text = "MIT"}
+keywords = ["gee", "geemap", "remote sensing", "earth engine", "terra climate", "chirps", "ibge", "sidra"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+dependencies = [
+    "earthengine-api>=0.1",
+    "eemont>=0.3.5",
+    "pyproj>=3.0",
+    "pandas>=1.2",
+    "tqdm>=4.60",
+    "xarray>=2023.1",
+    "rioxarray>=0.13",
+    "matplotlib>=3.3",
+    "geemap>=0.20",
+    "openpyxl"
+]
+
+[tool.setuptools]
+packages = {find = {}}
+
+[tool.setuptools.packages.find]
+where = ["."]
+exclude = ["geemap_tools/private_dev"]
+

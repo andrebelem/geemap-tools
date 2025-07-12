@@ -10,7 +10,7 @@ from pathlib import Path
 from zipfile import ZipFile
 import tempfile
 from tempfile import TemporaryDirectory
-
+from .clouds import get_clear_sky_percentage
 
 def list_sat_images(collection_id, roi, max_imgs=500, compute_clear_sky=False, time_range=None):
     """
@@ -21,21 +21,44 @@ def list_sat_images(collection_id, roi, max_imgs=500, compute_clear_sky=False, t
         roi (ee.Geometry): Geometria da área de interesse (obrigatória).
         max_imgs (int): Máximo de imagens a processar (default: 500)
         compute_clear_sky (bool): Se True, calcula percentual de céu claro com base na máscara de nuvem.
-        time_range (tuple): Par de strings com data inicial e final no formato 'YYYY-MM-DD', exemplo: time_range=("2021-01-01", "2021-12-31")
+        time_range (tuple): Par de strings com data inicial e final no formato 'YYYY-MM-DD'.
 
     Returns:
         pd.DataFrame: Tabela com metadados e percentual da ROI coberto.
 
     Raises:
-        ValueError: Se a ROI não for fornecida.
+        ValueError: Se a ROI não for fornecida ou a coleção não for reconhecida.
     """
     if roi is None:
         raise ValueError("É necessário fornecer uma ROI (ee.Geometry) para usar esta função.")
 
+    SATELLITE_METADATA = {
+        "LANDSAT": {
+            "satellite": "SPACECRAFT_ID",
+            "cloud": "CLOUD_COVER",
+            "elevation": "SUN_ELEVATION",
+            "azimuth": "SUN_AZIMUTH"
+        },
+        "SENTINEL": {
+            "satellite": "SPACECRAFT_NAME",
+            "cloud": "CLOUDY_PIXEL_PERCENTAGE",
+            "elevation": "MEAN_SOLAR_ZENITH_ANGLE",
+            "azimuth": "MEAN_SOLAR_AZIMUTH_ANGLE",
+            "zenith_to_elevation": True
+        }
+    }
+
+    # Verifica o tipo de coleção
+    if "LANDSAT" in collection_id.upper():
+        meta = SATELLITE_METADATA["LANDSAT"]
+    elif "S2" in collection_id.upper() or "SENTINEL" in collection_id.upper():
+        meta = SATELLITE_METADATA["SENTINEL"]
+    else:
+        raise ValueError(f"A coleção '{collection_id}' não é compatível. Apenas LANDSAT ou SENTINEL são suportados.")
+
     # Cria a coleção
     collection = ee.ImageCollection(collection_id).filterBounds(roi)
 
-    # Aplica filtro temporal, se fornecido
     if time_range is not None:
         start_date, end_date = time_range
         collection = collection.filterDate(start_date, end_date)
@@ -51,33 +74,22 @@ def list_sat_images(collection_id, roi, max_imgs=500, compute_clear_sky=False, t
         props = img.getInfo().get('properties', {})
 
         # Proporção da imagem que cobre a ROI
-        proportion = 0
         try:
             geom = img.geometry()
             inter = geom.intersection(roi, ee.ErrorMargin(1))
             inter_area = inter.area(ee.ErrorMargin(1)).getInfo()
-            proportion = (inter_area / roi_area) * 100 if inter_area > 0 else 0
+            proportion = round((inter_area / roi_area) * 100, 1) if inter_area > 0 else 0
         except:
             proportion = 0
 
-        # Ajuste de propriedades por sensor
-        if 'SPACECRAFT_ID' in props:  # Landsat
-            satellite = props.get('SPACECRAFT_ID')
-            img_cloud_cover = props.get('CLOUD_COVER')
-            solar_elevation = props.get('SUN_ELEVATION')
-            solar_azimuth = props.get('SUN_AZIMUTH')
-        elif 'SPACECRAFT_NAME' in props:  # Sentinel
-            satellite = props.get('SPACECRAFT_NAME')
-            img_cloud_cover = props.get('CLOUDY_PIXEL_PERCENTAGE')
-            solar_elevation = props.get('MEAN_SOLAR_ZENITH_ANGLE')
-            solar_azimuth = props.get('MEAN_SOLAR_AZIMUTH_ANGLE')
-            if solar_elevation is not None:
-                solar_elevation = 90 - solar_elevation
-        else:
-            satellite = props.get('platform', 'unknown')
-            img_cloud_cover = props.get('CLOUD_COVER', None)
-            solar_elevation = None
-            solar_azimuth = None
+        # Extrai campos conforme dicionário
+        satellite = props.get(meta['satellite'], 'unknown')
+        img_cloud_cover = props.get(meta['cloud'])
+        solar_elevation = props.get(meta['elevation'])
+        solar_azimuth = props.get(meta['azimuth'])
+
+        if meta.get('zenith_to_elevation') and solar_elevation is not None:
+            solar_elevation = 90 - solar_elevation
 
         # Cálculo opcional de céu claro
         clear_pct = None
@@ -88,18 +100,21 @@ def list_sat_images(collection_id, roi, max_imgs=500, compute_clear_sky=False, t
                 print(f"[DEBUG] Erro ao calcular clear_sky para {img_id}: {e}")
                 clear_pct = None
 
+        # Arredondamento
         metadata = {
             'id': img_id,
             'date': pd.to_datetime(props.get('system:time_start'), unit='ms'),
             'satellite': satellite,
-            'img_cloud_cover': img_cloud_cover,
-            'solar_elevation': solar_elevation,
-            'solar_azimuth': solar_azimuth,
-            'proportion_roi_%': proportion,
-            'clear_sky_%': clear_pct,
+            'img_cloud_cover': round(img_cloud_cover) if img_cloud_cover is not None else None,
+            'solar_elevation': round(solar_elevation) if solar_elevation is not None else None,
+            'solar_azimuth': round(solar_azimuth) if solar_azimuth is not None else None,
+            'proportion_roi_%': round(proportion, 1),
+            'clear_sky_%': round(clear_pct, 1) if clear_pct is not None else None,
         }
 
         metadata_list.append(metadata)
 
     return pd.DataFrame(metadata_list)
+
+
 

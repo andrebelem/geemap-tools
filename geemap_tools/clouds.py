@@ -1,18 +1,7 @@
-# geemap_tools/gee_utils.py
+# geemap_tools/clouds.py
 import ee
-import eemont
-import geopandas as gpd
-import pandas as pd
-from tqdm import tqdm
-import os
-import warnings
-from pathlib import Path
-from zipfile import ZipFile
-import tempfile
-from tempfile import TemporaryDirectory
 
-
-def custom_mask_clouds(img):
+def custom_mask_clouds(img, debug=False):
     bands = img.bandNames().getInfo()
 
     if 'QA_PIXEL' in bands:  # Landsat
@@ -21,48 +10,77 @@ def custom_mask_clouds(img):
 
     elif 'SCL' in bands:  # Sentinel-2
         scl = img.select('SCL')
-        # Remove nuvem média, alta, cirros, sombra (ajuste conforme necessário)
         cloud_mask = scl.remap([3, 8, 9, 10], [0]*4, defaultValue=1).eq(1)
-        return img.updateMask(cloud_mask)
+        masked = img.updateMask(cloud_mask)
+
+        try:
+            test_mask = masked.mask().reduce(ee.Reducer.sum()).reduceRegion(
+                reducer=ee.Reducer.sum(),
+                geometry=img.geometry(),
+                scale=20,
+                maxPixels=1e8
+            ).getInfo()
+            total = list(test_mask.values())[0]
+            if total == 0 and 'MSK_CLDPRB' in bands:
+                cloud_prob = img.select('MSK_CLDPRB')
+                clear_mask = cloud_prob.lt(50)
+                return img.updateMask(clear_mask)
+        except Exception as e:
+            if debug:
+                print(f"[DEBUG] Erro ao testar máscara SCL: {e}")
+
+        return masked
+
+    elif 'MSK_CLDPRB' in bands:
+        cloud_prob = img.select('MSK_CLDPRB')
+        clear_mask = cloud_prob.lt(50)
+        return img.updateMask(clear_mask)
 
     else:
-        print("[DEBUG] Nenhuma banda de nuvem detectada.")
+        if debug:
+            print("[DEBUG] Nenhuma banda de nuvem reconhecida.")
         return img
 
 def get_clear_sky_percentage(img, roi, debug=False):
+    """
+    Calcula a porcentagem de céu claro sobre uma ROI com base na máscara de nuvem.
+    """
     try:
-        bands = img.bandNames().getInfo()
+        band_names = img.bandNames()
+        scale = 10  # padrão para Sentinel-2
 
-        if 'QA_PIXEL' in bands:
-            scale = 30
-        elif 'SCL' in bands:
-            scale = 20
-        else:
+        if band_names.contains('QA_PIXEL').getInfo():
+            scale = 30  # Landsat
+        elif band_names.contains('SCL').getInfo():
             scale = 10
+        elif band_names.contains('MSK_CLDPRB').getInfo():
+            scale = 20
 
+        # Aplica máscara personalizada
         cloud_masked = custom_mask_clouds(img)
-        clear = cloud_masked.mask().reduce(ee.Reducer.min()).rename('clear')
 
-        # Usa média de 1s (céu claro)
-        stats = clear.reduceRegion(
+        # Obtém a primeira banda da máscara
+        clear_mask = cloud_masked.mask().select(0)
+
+        # Reduz sobre a ROI
+        stats = clear_mask.reduceRegion(
             reducer=ee.Reducer.mean(),
             geometry=roi,
             scale=scale,
             maxPixels=1e9
         ).getInfo()
 
-        clear_mean = stats.get('clear')
-
-        if clear_mean is None:
+        if not stats:
             if debug:
-                print(f"[DEBUG] Nenhum pixel válido na média: {stats}")
+                print("[DEBUG] Redução retornou dicionário vazio.")
             return None
 
-        return clear_mean * 100  # transforma proporção em %
+        # Pega o primeiro valor do dicionário (única banda)
+        clear_mean = list(stats.values())[0]
+
+        return round(clear_mean * 100, 1)
 
     except Exception as e:
         if debug:
-            print(f"[DEBUG] Erro geral em get_clear_sky_percentage: {e}")
+            print(f"[DEBUG] Erro em get_clear_sky_percentage: {e}")
         return None
-
-

@@ -1,13 +1,12 @@
 import ast
 import os
 
-file_path = "geemap_tools/gee_utils.py"
+# Caminho base do pacote
+base_dir = "geemap_tools"
+manual_path = "manual.md"
 
-if not os.path.exists(file_path):
-    raise FileNotFoundError(f"O arquivo {file_path} não foi encontrado.")
-
-with open(file_path, "r", encoding="utf-8") as f:
-    tree = ast.parse(f.read(), filename=file_path)
+# Ignorar arquivos especiais
+excluded_files = {"__init__.py", "__pycache__"}
 
 def extract_function_info(node: ast.FunctionDef):
     name = node.name
@@ -15,34 +14,52 @@ def extract_function_info(node: ast.FunctionDef):
     docstring = ast.get_docstring(node) or "*Sem descrição*"
     return name, args, docstring
 
-# Extrai as funções definidas no arquivo
-functions = [
-    extract_function_info(node)
-    for node in tree.body
-    if isinstance(node, ast.FunctionDef)
-]
-
-# Gera o manual em Markdown
 manual_lines = [
-    "# Manual do geemap-tools",
+    "# 📘 Manual do geemap-tools",
     "",
-    "Este manual foi gerado automaticamente a partir das funções presentes em `gee_utils.py`.",
-    "",
-    "## Funções disponíveis",
+    "Este manual foi gerado automaticamente a partir das funções públicas presentes nos submódulos de `geemap_tools`.",
     ""
 ]
 
-for name, args, doc in functions:
-    signature = f"### `{name}({', '.join(args)})`"
-    manual_lines.append(signature)
-    manual_lines.append("")
-    manual_lines.append(doc.strip())
+# Percorre todos os arquivos .py na pasta geemap_tools
+for filename in sorted(os.listdir(base_dir)):
+    if not filename.endswith(".py") or filename in excluded_files:
+        continue
+
+    file_path = os.path.join(base_dir, filename)
+    module_name = filename.replace(".py", "")
+    
+    manual_lines.append(f"## 📂 Módulo `{module_name}`")
     manual_lines.append("")
 
-# Salva
-manual_path = "manual.md"
+    with open(file_path, "r", encoding="utf-8") as f:
+        try:
+            tree = ast.parse(f.read(), filename=file_path)
+        except SyntaxError as e:
+            manual_lines.append(f"⚠️ Erro ao analisar `{filename}`: {e}")
+            manual_lines.append("")
+            continue
+
+    functions = [
+        extract_function_info(node)
+        for node in tree.body
+        if isinstance(node, ast.FunctionDef) and not node.name.startswith("_")
+    ]
+
+    if not functions:
+        manual_lines.append("_Nenhuma função pública encontrada._")
+        manual_lines.append("")
+        continue
+
+    for name, args, doc in functions:
+        signature = f"### `{name}({', '.join(args)})`"
+        manual_lines.append(signature)
+        manual_lines.append("")
+        manual_lines.append(doc.strip())
+        manual_lines.append("")
+
+# Salva o manual
 with open(manual_path, "w", encoding="utf-8") as f:
     f.write("\n".join(manual_lines))
 
 print(f"✅ Manual gerado com sucesso: {manual_path}")
-
