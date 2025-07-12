@@ -1,0 +1,19 @@
+name: geemap-tools
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - mamba
+  - notebook
+  - jupyterlab
+  - geopandas
+  - pandas
+  - xarray
+  - rioxarray
+  - matplotlib
+  - tqdm
+  - pip
+  - pip:
+      - earthengine-api
+      - eemont
+      - -e .
