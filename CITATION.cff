@@ -1,0 +1,13 @@
+cff-version: 1.2.0
+title: geemap-tools
+authors:
+  - family-names: Belem
+    given-names: Andre
+    affiliation: Universidade Federal Fluminense — Observatório Oceanográfico
+    email: andrebelem@id.uff.br
+    orcid: https://orcid.org/0000-0002-8865-6180  # (opcional, substitua pelo seu se desejar)
+    website: https://observatoriooceanografico.org
+date-released: 2025-07-13
+version: 0.1.0
+license: MIT
+url: https://github.com/andrebelem/geemap-tools
