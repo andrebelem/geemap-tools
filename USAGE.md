@@ -393,18 +393,34 @@ containing land use per year and, if requested, elevation and terrain layers.
 
 Lista imagens de uma coleção Earth Engine com metadados úteis e interseção com uma ROI.
 
-Args:
-collection_id (str): ID da coleção (ex: 'LANDSAT/LC08/C02/T1_L2', 'COPERNICUS/S2_SR')
+Parâmetros:
+collection_id (str): ID da coleção (ex: 'LANDSAT/LC08/C02/T1_L2', 'COPERNICUS/S2_SR').
 roi (ee.Geometry): Geometria da área de interesse (obrigatória).
-max_imgs (int): Máximo de imagens a processar (default: 500)
+max_imgs (int): Máximo de imagens a processar (padrão: 500).
 compute_clear_sky (bool): Se True, calcula percentual de céu claro com base na máscara de nuvem.
 time_range (tuple): Par de strings com data inicial e final no formato 'YYYY-MM-DD'.
 
+Retorno:
+pd.DataFrame: Tabela com metadados das imagens e percentual da ROI coberto.
+
+Erros:
+ValueError: Se a ROI não for fornecida ou a coleção não for reconhecida.
+
+----
+List satellite images from an Earth Engine collection with useful metadata and intersection with a ROI.
+
+Args:
+collection_id (str): Collection ID (e.g., 'LANDSAT/LC08/C02/T1_L2', 'COPERNICUS/S2_SR').
+roi (ee.Geometry): Geometry of the region of interest (required).
+max_imgs (int): Maximum number of images to process (default: 500).
+compute_clear_sky (bool): If True, computes clear sky percentage based on the cloud mask.
+time_range (tuple): Pair of strings with start and end date in the 'YYYY-MM-DD' format.
+
 Returns:
-pd.DataFrame: Tabela com metadados e percentual da ROI coberto.
+pd.DataFrame: Table with image metadata and percentage of ROI covered.
 
 Raises:
-ValueError: Se a ROI não for fornecida ou a coleção não for reconhecida.
+ValueError: If ROI is not provided or the collection is not recognized.
 
 ## Module `clouds`
 
@@ -415,12 +431,25 @@ Aplica uma máscara de nuvens personalizada a uma imagem do Earth Engine.
 Suporta imagens com bandas QA_PIXEL (Landsat), SCL (Sentinel-2) ou MSK_CLDPRB (probabilidade de nuvem).
 Para Sentinel-2, utiliza a banda SCL com fallback para MSK_CLDPRB caso a máscara esteja completamente vazia.
 
-Args:
+Parâmetros:
 img (ee.Image): Imagem de entrada contendo bandas de qualidade relacionadas a nuvens.
-debug (bool, optional): Se True, imprime mensagens de depuração. Padrão é False.
+debug (bool, opcional): Se True, imprime mensagens de depuração. Padrão é False.
+
+Retorno:
+ee.Image: Imagem com nuvens mascaradas (pixels de nuvem removidos).
+
+----
+Apply a custom cloud mask to an Earth Engine image.
+
+Supports images with QA_PIXEL (Landsat), SCL (Sentinel-2), or MSK_CLDPRB (cloud probability) bands.
+For Sentinel-2, uses the SCL band with fallback to MSK_CLDPRB if the mask is completely empty.
+
+Args:
+img (ee.Image): Input image containing cloud-related quality bands.
+debug (bool, optional): If True, prints debug messages. Default is False.
 
 Returns:
-ee.Image: Imagem com nuvens mascaradas (pixels de nuvem removidos).
+ee.Image: Image with clouds masked (cloud pixels removed).
 
 ### `get_clear_sky_percentage(img, roi, debug=False)`
 
@@ -429,13 +458,27 @@ Calcula a porcentagem de céu claro (sem nuvens) sobre uma ROI com base na másc
 Utiliza a função `custom_mask_clouds()` para aplicar a máscara apropriada à imagem.
 A porcentagem é obtida a partir da média da máscara binária (1 = claro, 0 = nublado) sobre a ROI.
 
-Args:
+Parâmetros:
 img (ee.Image): Imagem do Earth Engine com bandas de máscara de nuvem.
 roi (ee.Geometry | ee.Feature | ee.FeatureCollection): Região de interesse.
-debug (bool, optional): Se True, imprime mensagens de depuração. Padrão é False.
+debug (bool, opcional): Se True, imprime mensagens de depuração. Padrão é False.
+
+Retorno:
+float | None: Porcentagem de pixels com céu claro (0 a 100), ou None se falhar.
+
+----
+Computes the percentage of clear sky (cloud-free) pixels over a ROI based on the image's cloud mask.
+
+Uses the `custom_mask_clouds()` function to apply the appropriate mask to the image.
+The percentage is calculated from the mean value of a binary mask (1 = clear, 0 = cloudy) over the ROI.
+
+Args:
+img (ee.Image): Earth Engine image with cloud mask bands.
+roi (ee.Geometry | ee.Feature | ee.FeatureCollection): Region of interest.
+debug (bool, optional): If True, prints debug messages. Default is False.
 
 Returns:
-float | None: Porcentagem de pixels com céu claro (0 a 100), ou None se falhar.
+float | None: Percentage of cloud-free pixels (0 to 100), or None if it fails.
 
 ## Module `io`
 
@@ -446,37 +489,74 @@ Exporta uma ROI (região de interesse) do Earth Engine para arquivo no disco loc
 A ROI pode ser uma `ee.Geometry`, `ee.Feature` ou `ee.FeatureCollection`, e será convertida
 para um arquivo `.geojson` ou `.shp` (compactado como `.zip`) com sistema de referência EPSG:4326.
 
-Args:
+Parâmetros:
 roi (ee.Geometry | ee.Feature | ee.FeatureCollection): Objeto de entrada do Earth Engine.
 filename (str): Caminho base (sem extensão) para salvar o arquivo de saída.
-format (str, optional): Formato de saída. Pode ser `'geojson'` ou `'shp'`. Padrão é `'geojson'`.
-wrap_geometry (bool, optional): Se `True`, embrulha `ee.Geometry` como `ee.Feature` antes da exportação. Necessário para `ee.Geometry`.
+format (str, opcional): Formato de saída. Pode ser `'geojson'` ou `'shp'`. Padrão é `'geojson'`.
+wrap_geometry (bool, opcional): Se `True`, embrulha `ee.Geometry` como `ee.Feature` antes da exportação. Necessário para `ee.Geometry`.
 
-Returns:
+Retorno:
 str: Caminho absoluto do arquivo salvo (ex: `/caminho/arquivo.geojson` ou `/caminho/arquivo.zip`).
 
-Raises:
+Erros:
 ValueError: Se a geometria for inválida ou não estiver embrulhada corretamente.
 TypeError: Se o tipo da ROI for incompatível.
 RuntimeError: Se falhar ao converter para GeoDataFrame ou salvar o arquivo.
+
+----
+Exports an Earth Engine ROI (region of interest) to a local file.
+
+The ROI can be an `ee.Geometry`, `ee.Feature`, or `ee.FeatureCollection`, and will be converted
+to a `.geojson` file or a `.shp` file (compressed as `.zip`) using the EPSG:4326 reference system.
+
+Args:
+roi (ee.Geometry | ee.Feature | ee.FeatureCollection): Earth Engine input object.
+filename (str): Base path (without extension) to save the output file.
+format (str, optional): Output format. Can be `'geojson'` or `'shp'`. Default is `'geojson'`.
+wrap_geometry (bool, optional): If `True`, wraps an `ee.Geometry` as an `ee.Feature` before export. Required for `ee.Geometry`.
+
+Returns:
+str: Absolute path to the saved file (e.g., `/path/file.geojson` or `/path/file.zip`).
+
+Raises:
+ValueError: If the geometry is invalid or not wrapped correctly.
+TypeError: If the ROI type is incompatible.
+RuntimeError: If conversion to GeoDataFrame or file saving fails.
 
 ### `file_to_roi(filepath)`
 
 Converte um arquivo local (GeoJSON, SHP ou ZIP contendo SHP) em uma FeatureCollection do Earth Engine.
 
-O arquivo é lido com `geopandas` e convertido para `ee.FeatureCollection`, com reprojectado para EPSG:4326.
+O arquivo é lido com `geopandas` e convertido para `ee.FeatureCollection`, reprojetado para EPSG:4326.
 Suporta arquivos `.geojson`, `.shp` ou `.zip` contendo shapefile.
 
-Args:
+Parâmetros:
 filepath (str): Caminho para o arquivo de entrada.
 
-Returns:
+Retorno:
 ee.FeatureCollection: Objeto Earth Engine correspondente à geometria do arquivo.
 
-Raises:
+Erros:
 FileNotFoundError: Se o arquivo não for encontrado.
 ValueError: Se o zip não contiver um shapefile válido.
 RuntimeError: Se houver erro ao ler com geopandas ou ao converter para `ee.Feature`.
+
+----
+Converts a local file (GeoJSON, SHP, or ZIP containing SHP) into an Earth Engine FeatureCollection.
+
+The file is read using `geopandas` and converted to an `ee.FeatureCollection`, reprojected to EPSG:4326.
+Supports `.geojson`, `.shp`, or `.zip` files containing a shapefile.
+
+Args:
+filepath (str): Path to the input file.
+
+Returns:
+ee.FeatureCollection: Earth Engine object corresponding to the file geometry.
+
+Raises:
+FileNotFoundError: If the file is not found.
+ValueError: If the zip does not contain a valid shapefile.
+RuntimeError: If reading with geopandas or converting to `ee.Feature` fails.
 
 ## Module `sidra_tools`
 
@@ -484,15 +564,31 @@ RuntimeError: Se houver erro ao ler com geopandas ou ao converter para `ee.Featu
 
 Extrai dados da Tabela 5457 da SIDRA/IBGE sobre produção agrícola municipal.
 
-Args:
+Parâmetros:
 cod_mun (str): Código do município no IBGE (ex: '3169406' para Três Pontas-MG).
 cod_cultura (str): Código da cultura no IBGE (ex: '40139' para Café em grão).
 debug (bool): Se True, imprime informações de progresso e diagnóstico.
 
-Returns:
+Retorno:
 pd.DataFrame: DataFrame com colunas:
 - A.plantada (ha)
 - A.colhida (ha)
 - Q.colhida (kg)
 - Rendimento (kg/ha)
 O índice é uma série de anos no formato datetime.
+
+----
+Extracts data from SIDRA/IBGE Table 5457 on municipal agricultural production.
+
+Args:
+cod_mun (str): IBGE code of the municipality (e.g., '3169406' for Três Pontas-MG).
+cod_cultura (str): IBGE code of the crop (e.g., '40139' for Coffee beans).
+debug (bool): If True, prints progress and diagnostic information.
+
+Returns:
+pd.DataFrame: DataFrame with the following columns:
+- A.plantada (ha)
+- A.colhida (ha)
+- Q.colhida (kg)
+- Rendimento (kg/ha)
+The index is a time series of years in datetime format.

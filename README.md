@@ -1,6 +1,7 @@
 <p align="center">
   <img src="geemap_tools_logo.png" alt="geemap-tools logo" width="150"/>
 </p>
+
 # GEEMAP-TOOLS
 
 *Prefer the English version? See [README-en.md](./README-en.md).*
