@@ -52,3 +52,35 @@ mamba install -c conda-forge geemap pandas geopandas eemont xarray rioxarray mat
 git clone https://github.com/andrebelem/geemap-tools.git
 cd geemap-tools
 pip install -e .
+``` 
+#### Running on COLAB?
+
+If you're using Google Colab, simply install `geemap-tools` in your virtual environment — it already comes with all dependencies:
+
+```
+!pip install git+https://github.com/andrebelem/geemap-tools.git
+```
+
+**Note**: Some `geemap` features may not work perfectly on Colab due to environment limitations (e.g., interactive `Map.addLayer`). We recommend running locally with JupyterLab when possible. Always be cautious with very large ROIs or memory-intensive operations, as GEE may throttle or block your requests.
+
+#### Development
+
+This project now uses a `pyproject.toml` with support for modern `setuptools`. The `private_dev/` directory is excluded from installation. For local development with hot-reload:
+
+```bash
+pip install -e .
+
+```
+
+Contact<br>
+Have questions, suggestions or feature requests?
+Reach out: [andrebelem@id.uff.br](mailto:andrebelem@id.uff.br)
+> ⚠️ This project is still under development. A citable version with a DOI will be published soon.
+
+
+### Want an assistant to help you use this repo?
+
+Check out the geemap-tools DeepWiki! [https://deepwiki.com/andrebelem/geemap-tools](https://deepwiki.com/andrebelem/geemap-tools)
+
+
+

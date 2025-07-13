@@ -75,6 +75,8 @@ pip install -e .
 **Contato**<br>
 Dúvidas, sugestões de melhorias ou novas funções?
 Entre em contato: [andrebelem@id.uff.br](mailto:andrebelem@id.uff.br)
+> ⚠️ Este projeto ainda está em desenvolvimento. Uma versão citável com DOI será publicada em breve.
+
 
 ### Quer um assistente para usar esse repo ?
 
