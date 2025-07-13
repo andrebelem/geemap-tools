@@ -32,10 +32,8 @@ dependencies = [
     "openpyxl"
 ]
 
-[tool.setuptools]
-packages = {find = {}}
-
 [tool.setuptools.packages.find]
 where = ["."]
-exclude = ["geemap_tools/private_dev"]
+include = ["geemap_tools*"]
+exclude = ["private_dev"]
 

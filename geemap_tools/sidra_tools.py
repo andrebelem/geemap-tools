@@ -10,19 +10,35 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 def get_sidra_cultura(cod_mun, cod_cultura, debug=False):
     """
     Extrai dados da Tabela 5457 da SIDRA/IBGE sobre produção agrícola municipal.
-
-    Args:
+    
+    Parâmetros:
         cod_mun (str): Código do município no IBGE (ex: '3169406' para Três Pontas-MG).
         cod_cultura (str): Código da cultura no IBGE (ex: '40139' para Café em grão).
         debug (bool): Se True, imprime informações de progresso e diagnóstico.
-
-    Returns:
+    
+    Retorno:
         pd.DataFrame: DataFrame com colunas:
             - A.plantada (ha)
             - A.colhida (ha)
             - Q.colhida (kg)
             - Rendimento (kg/ha)
         O índice é uma série de anos no formato datetime.
+    
+    ----
+    Extracts data from SIDRA/IBGE Table 5457 on municipal agricultural production.
+    
+    Args:
+        cod_mun (str): IBGE code of the municipality (e.g., '3169406' for Três Pontas-MG).
+        cod_cultura (str): IBGE code of the crop (e.g., '40139' for Coffee beans).
+        debug (bool): If True, prints progress and diagnostic information.
+    
+    Returns:
+        pd.DataFrame: DataFrame with the following columns:
+            - A.plantada (ha)
+            - A.colhida (ha)
+            - Q.colhida (kg)
+            - Rendimento (kg/ha)
+        The index is a time series of years in datetime format.
     """
 
     if not cod_mun or not cod_cultura:

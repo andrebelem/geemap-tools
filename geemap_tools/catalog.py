@@ -1,4 +1,4 @@
-# geemap_tools/gee_utils.py
+# geemap_tools/catalog.py
 import ee
 import eemont
 import geopandas as gpd
@@ -15,19 +15,35 @@ from .clouds import get_clear_sky_percentage
 def list_sat_images(collection_id, roi, max_imgs=500, compute_clear_sky=False, time_range=None):
     """
     Lista imagens de uma coleção Earth Engine com metadados úteis e interseção com uma ROI.
-
-    Args:
-        collection_id (str): ID da coleção (ex: 'LANDSAT/LC08/C02/T1_L2', 'COPERNICUS/S2_SR')
+    
+    Parâmetros:
+        collection_id (str): ID da coleção (ex: 'LANDSAT/LC08/C02/T1_L2', 'COPERNICUS/S2_SR').
         roi (ee.Geometry): Geometria da área de interesse (obrigatória).
-        max_imgs (int): Máximo de imagens a processar (default: 500)
+        max_imgs (int): Máximo de imagens a processar (padrão: 500).
         compute_clear_sky (bool): Se True, calcula percentual de céu claro com base na máscara de nuvem.
         time_range (tuple): Par de strings com data inicial e final no formato 'YYYY-MM-DD'.
-
-    Returns:
-        pd.DataFrame: Tabela com metadados e percentual da ROI coberto.
-
-    Raises:
+    
+    Retorno:
+        pd.DataFrame: Tabela com metadados das imagens e percentual da ROI coberto.
+    
+    Erros:
         ValueError: Se a ROI não for fornecida ou a coleção não for reconhecida.
+    
+    ----
+    List satellite images from an Earth Engine collection with useful metadata and intersection with a ROI.
+    
+    Args:
+        collection_id (str): Collection ID (e.g., 'LANDSAT/LC08/C02/T1_L2', 'COPERNICUS/S2_SR').
+        roi (ee.Geometry): Geometry of the region of interest (required).
+        max_imgs (int): Maximum number of images to process (default: 500).
+        compute_clear_sky (bool): If True, computes clear sky percentage based on the cloud mask.
+        time_range (tuple): Pair of strings with start and end date in the 'YYYY-MM-DD' format.
+    
+    Returns:
+        pd.DataFrame: Table with image metadata and percentage of ROI covered.
+    
+    Raises:
+        ValueError: If ROI is not provided or the collection is not recognized.
     """
     if roi is None:
         raise ValueError("É necessário fornecer uma ROI (ee.Geometry) para usar esta função.")

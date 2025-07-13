@@ -27,6 +27,21 @@ def index_to_timeseries(df, roi, index_name, scale=None, debug=False):
 
     Returns:
         pd.DataFrame: Mesmo DataFrame com colunas <index_name>_mean e _std.
+
+    ------------------------------------------------------------------------
+
+    Computes the mean and standard deviation of a spectral index (from eemont)
+    over a given ROI for each image listed in a DataFrame.
+
+    Args:
+        df (pd.DataFrame): DataFrame with a column 'id' containing image IDs.
+        roi (ee.Geometry): Region of interest.
+        index_name (str): Name of the spectral index (e.g., 'NDWI', 'NDMI', 'MNDWI', etc.).
+        scale (int, optional): Export scale in meters (automatically detected if None).
+        debug (bool): If True, prints debug messages.
+
+    Returns:
+        pd.DataFrame: The same DataFrame with additional columns <index_name>_mean and _std.
     """
     index_means = []
     index_stds = []
@@ -91,6 +106,26 @@ def describe_roi(roi, show_pixels_table=True, print_summary=True, pixel_res=None
             "perimetro_km": perímetro total em km,
             "n_pixels": dicionário com estimativas de número de pixels por resolução,
             "df": DataFrame com a tabela (se show_pixels_table=True)
+        }
+
+    ------------------------------------------------------------------------
+
+    Describes a Google Earth Engine ROI, returning area, perimeter,
+    and an estimate of the number of pixels at different spatial resolutions.
+
+    Args:
+        roi (ee.Geometry | ee.Feature | ee.FeatureCollection): Region of interest.
+        show_pixels_table (bool): If True, displays a table with estimated number of pixels per resolution.
+        print_summary (bool): If True, prints formatted area and perimeter.
+        pixel_res (int | float | list, optional): Resolution(s) in meters for estimation.
+            Default is [10, 30, 60]. You may also use values like 4000 (TerraClimate) or 5000 (CHIRPS).
+
+    Returns:
+        dict: {
+            "area_km2": total area in km²,
+            "perimetro_km": total perimeter in km,
+            "n_pixels": dictionary with pixel count estimates by resolution,
+            "df": DataFrame with the table (if show_pixels_table=True)
         }
     """
     import pandas as pd
@@ -168,6 +203,25 @@ def get_TerraClimate(roi, start="2000-01-01", end="2025-12-31",
     Returns:
         pd.DataFrame: DataFrame com estatísticas mensais para cada variável selecionada.
                       Cada variável terá colunas com os sufixos:
+                      _mean, _median, _max, _min, _stdDev.
+
+    ------------------------------------------------------------------------
+
+    Extracts monthly statistics from the TerraClimate collection for a given ROI.
+
+    Args:
+        roi (ee.Geometry): Region of interest.
+        start (str): Start date in 'YYYY-MM-DD' format.
+        end (str): End date in 'YYYY-MM-DD' format.
+        variables (list): List of desired variables.  
+                          Valid options:
+                          ['aet', 'def', 'pdsi', 'pet', 'pr', 'q', 'soil',
+                           'swe', 'tmmx', 'tmmn', 'vap', 'vpd', 'ws']
+        debug (bool): If True, prints debug messages.
+
+    Returns:
+        pd.DataFrame: DataFrame with monthly statistics for each selected variable.
+                      Each variable will have columns with the suffixes:
                       _mean, _median, _max, _min, _stdDev.
     """
 
@@ -283,6 +337,20 @@ def get_CHIRPS(roi, start="2000-01-01", end="2025-12-31", frequency="monthly", d
 
     Returns:
         pd.DataFrame: DataFrame com estatísticas de precipitação (mm), com índice temporal.
+
+    ------------------------------------------------------------------------
+
+    Extracts data from the CHIRPS Daily collection for a given region and time period.
+
+    Args:
+        roi (ee.Geometry): Region of interest (e.g., ee.Geometry.Polygon).
+        start (str): Start date in 'YYYY-MM-DD' format.
+        end (str): End date in 'YYYY-MM-DD' format.
+        frequency (str): 'daily' or 'monthly'. Defines the temporal frequency of the data.
+        debug (bool): If True, prints additional debug messages.
+
+    Returns:
+        pd.DataFrame: DataFrame with precipitation statistics (mm) indexed by time.
     """
     # === Validação da frequência ===
     frequency = frequency.lower()
@@ -405,4 +473,227 @@ def get_CHIRPS(roi, start="2000-01-01", end="2025-12-31", frequency="monthly", d
 
     return df
 
+import ee
+import geemap
+import numpy as np
+import xarray as xr
+import datetime
+import os
+import shutil
+from pathlib import Path
+from tqdm import tqdm
+from contextlib import redirect_stdout
+import io
+import rioxarray as rxr
+import geopandas as gpd
+from geemap import ee_to_geojson
+from geemap_tools.io import roi_to_file
+import time
 
+def extract_mapbiomas(roi, years=range(1985, 2023), include_srtm=True,
+                      include_terrain=False, terrain_vars=("hillshade",),
+                      comment=None, debug=False, scale=30):
+    """
+    Extrai dados da Coleção 9 do MapBiomas para um ROI, com opção de incluir elevação
+    (SRTM) e variáveis derivadas do relevo (via ee.Terrain), exportando ano a ano e
+    retornando como um xarray.Dataset com metadados e coordenadas geográficas.
+
+    Args:
+        roi (ee.Geometry | ee.Feature | ee.FeatureCollection): Região de interesse.
+            Pode ser uma geometria simples ou uma coleção de feições do Earth Engine.
+        years (iterable): Lista de anos a extrair do MapBiomas (padrão: 1985 a 2022).
+        include_srtm (bool): Se True, inclui a variável de elevação (SRTM), interpolada
+            para coincidir com a resolução e grade do MapBiomas.
+        include_terrain (bool): Se True, inclui variáveis topográficas derivadas de
+            elevação usando `ee.Terrain`.
+        terrain_vars (tuple of str): Conjunto de variáveis de relevo a incluir.
+            As opções válidas são:
+                - "elevation": altitude bruta (equivalente ao SRTM)
+                - "slope": declividade do terreno (graus)
+                - "aspect": orientação do declive (azimute em graus)
+                - "hillshade": sombreamento simulado baseado em iluminação solar
+        comment (str): Comentário opcional incluído nos metadados do dataset final.
+        debug (bool): Se True, imprime mensagens informativas durante o processo.
+        scale (int): Resolução espacial da exportação, em metros (padrão: 30 m).
+
+    Returns:
+        xr.Dataset: Conjunto de dados georreferenciados com dimensões (time, y, x),
+            contendo uma variável de uso da terra por ano e, se solicitado, camadas
+            adicionais de elevação e relevo.
+
+    ------------------------------------------------------------------------
+
+    Extracts data from MapBiomas Collection 9 for a given ROI, with optional inclusion
+    of elevation (SRTM) and topographic variables (via ee.Terrain), exporting year-by-year
+    and returning the result as an `xarray.Dataset` with full geospatial metadata.
+
+    Args:
+        roi (ee.Geometry | ee.Feature | ee.FeatureCollection): Region of interest.
+            Can be a simple geometry or a feature collection from Earth Engine.
+        years (iterable): List of years to extract from MapBiomas (default: 1985 to 2022).
+        include_srtm (bool): If True, includes interpolated SRTM elevation aligned to
+            MapBiomas resolution and grid.
+        include_terrain (bool): If True, adds terrain-derived variables using `ee.Terrain`.
+        terrain_vars (tuple of str): Set of terrain variables to include.
+            Valid options include:
+                - "elevation": raw elevation (equivalent to SRTM)
+                - "slope": terrain slope in degrees
+                - "aspect": slope aspect in degrees (azimuth)
+                - "hillshade": simulated hill shading based on sun position
+        comment (str): Optional string to be saved as a metadata comment.
+        debug (bool): If True, prints informative messages during processing.
+        scale (int): Spatial resolution in meters (default: 30 m).
+
+    Returns:
+        xr.Dataset: Georeferenced dataset with dimensions (time, y, x),
+            containing land use per year and, if requested, elevation and terrain layers.
+    """
+    if isinstance(roi, ee.FeatureCollection) or isinstance(roi, ee.Feature):
+        roi = roi.geometry()
+
+    bounds = roi.bounds().getInfo()
+    if not bounds or "coordinates" not in bounds:
+        raise ValueError("A geometria do ROI é inválida ou vazia.")
+       
+    base_image = ee.Image("projects/mapbiomas-public/assets/brazil/lulc/collection9/mapbiomas_collection90_integration_v1")
+
+    timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+    temp_dir = Path(f"temp_{timestamp}")
+    temp_dir.mkdir(exist_ok=True)
+
+    # === ROI to GeoJSON ===
+    roi_geojson_path = temp_dir / "roi.geojson"
+    roi_to_file(roi, roi_geojson_path, format="geojson")
+    gdf = gpd.read_file(roi_geojson_path)
+    
+    temp_paths = []
+    da_list = []
+    if debug:
+        tqdm.write("📦 Exportando bandas ano a ano:")
+        
+    # Verifica os anos disponíveis na imagem base
+    available_bands = base_image.bandNames().getInfo()
+    available_years = [
+        int(band.split("_")[1]) for band in available_bands if band.startswith("classification_")
+    ]
+    valid_years = [year for year in years if year in available_years]
+    
+    # Aviso se houver anos inválidos
+    invalid_years = set(years) - set(valid_years)
+    if invalid_years:
+        tqdm.write(f"⚠️ Aviso: Os seguintes anos não estão disponíveis e serão ignorados: {sorted(invalid_years)}")
+    
+    for year in tqdm(valid_years, desc="Exportando bandas ano a ano"):
+        band = f"classification_{year}"
+        band_name = f"mapbiomas_{year}"
+        mask = ee.Image.constant(1).clip(roi).selfMask()
+        image = base_image.select(band).rename(band_name).updateMask(mask)
+        temp_tif = temp_dir / f"{band_name}.tif"
+        temp_paths.append(temp_tif)
+
+        f = io.StringIO()
+        with redirect_stdout(f):
+            geemap.ee_export_image(
+                image,
+                filename=str(temp_tif),
+                region=roi,
+                scale=scale,
+                file_per_band=False
+            )
+
+        with rxr.open_rasterio(temp_tif, masked=True, cache=False) as da:
+            da = da.squeeze("band", drop=True)
+            da.name = "mapbiomas_class"
+            da = da.expand_dims(time=[np.datetime64(f"{year}-01-01")])
+            da = da.rio.clip(gdf.geometry, gdf.crs, drop=True)
+            da_list.append(da)
+
+    stacked = xr.concat(da_list, dim="time")
+    ds = stacked.to_dataset(name="mapbiomas_class")
+
+    if include_srtm:
+        if debug:
+            tqdm.write("🗻 Incluindo SRTM...")
+
+        srtm = ee.Image("USGS/SRTMGL1_003").rename("srtm_elevation")
+        temp_srtm = temp_dir / "srtm.tif"
+
+        f = io.StringIO()
+        with redirect_stdout(f):
+            geemap.ee_export_image(
+                srtm,
+                filename=str(temp_srtm),
+                region=roi.bounds(),
+                scale=scale,
+                file_per_band=False
+            )
+
+        with rxr.open_rasterio(temp_srtm, masked=True, cache=False) as da_srtm:
+            da_srtm = da_srtm.squeeze("band", drop=True)
+            da_srtm = da_srtm.rio.clip(gdf.geometry, gdf.crs, drop=True)
+            da_srtm_interp = da_srtm.interp_like(stacked)
+            ds["srtm_elevation"] = da_srtm_interp
+
+    if include_terrain:
+        terrain = ee.Terrain.products(ee.Image("USGS/SRTMGL1_003"))
+        for var in terrain_vars:
+            if debug:
+                tqdm.write(f"⛰️  Incluindo Terrain: {var}...")
+            try:
+                terrain_img = terrain.select(var)
+                temp_terrain = temp_dir / f"terrain_{var}.tif"
+
+                f = io.StringIO()
+                with redirect_stdout(f):
+                    geemap.ee_export_image(
+                        terrain_img,
+                        filename=str(temp_terrain),
+                        region=roi.bounds(),
+                        scale=scale,
+                        file_per_band=False
+                    )
+
+                with rxr.open_rasterio(temp_terrain, masked=True, cache=False) as da_terrain:
+                    da_terrain = da_terrain.squeeze("band", drop=True)
+                    da_terrain = da_terrain.rio.clip(gdf.geometry, gdf.crs, drop=True)
+                    da_terrain_interp = da_terrain.interp_like(stacked)
+                    ds[var] = da_terrain_interp
+            except Exception as e:
+                tqdm.write(f"⚠️ Falha ao incluir {var}: {e}")
+
+    ds.attrs["title"] = "MapBiomas Collection 9" + (" + SRTM" if include_srtm else "")
+    ds.attrs["created"] = str(datetime.datetime.now())
+    ds.attrs["scale"] = f"{scale} m"
+    ds.attrs["source"] = "https://mapbiomas.org"
+    ds.attrs["comment"] = comment if comment else ""
+
+    class_legend = {
+        1: 'Floresta', 3: 'Formação Florestal', 4: 'Formação Savânica',
+        11: 'Campo Alagado', 12: 'Formação Campestre', 15: 'Pastagem',
+        18: 'Agricultura', 21: 'Área não Vegetada', 23: 'Praia e Duna',
+        24: 'Área Urbanizada', 25: 'Mineração', 29: 'Afloramento Rochoso',
+        33: 'Apicum', 39: 'Aquicultura', 41: 'Silvicultura', 49: 'Soja',
+        50: 'Milho', 62: 'Cana', 64: 'Arroz', 66: 'Algodão',
+        67: 'Outras Lavouras Temporárias', 68: 'Café', 69: 'Citrus',
+        70: 'Outras Lavouras Perenes', 72: 'Mosaico Agricultura + Pastagem',
+        80: 'Reflorestamento com Espécie Nativa', 90: 'Infraestrutura', 95: 'Outros'
+    }
+    ds.attrs['mapbiomas_classes'] = str(class_legend)
+
+    if debug:
+        tqdm.write("✅ Dataset final criado com sucesso.")
+
+    # Tentativa segura com espera
+    for _ in range(5):
+        try:
+            shutil.rmtree(temp_dir)
+            if debug:
+                tqdm.write(f"🧹 Diretório temporário {temp_dir} removido.")
+            break
+        except PermissionError as e:
+            tqdm.write(f"⏳ Aguardando liberação do diretório ({e})...")
+            time.sleep(1)
+    else:
+        tqdm.write(f"⚠️ Não foi possível remover o diretório {temp_dir} após múltiplas tentativas.")
+
+    return ds

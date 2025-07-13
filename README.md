@@ -1,8 +1,14 @@
+<p align="center">
+  <img src="geemap_tools_logo.png" alt="geemap-tools logo" width="150"/>
+</p>
 # GEEMAP-TOOLS
 
-`geemap-tools` é um pacote auxiliar para facilitar o uso do Google Earth Engine e da biblioteca `geemap`, com foco em pesquisadores, estudantes e profissionais que precisam de ferramentas práticas e reutilizáveis para análise de dados geoespaciais.
+*Prefer the English version? See [README-en.md](./README-en.md).*
 
-O projeto é mantido pelo **Observatório Oceanográfico da UFF**, e foi criado para simplificar tarefas recorrentes em notebooks de pesquisa, ensino e extensão.
+`geemap-tools` é um pacote auxiliar desenvolvido para simplificar o uso do Google Earth Engine (GEE) e da biblioteca `geemap`.  
+O projeto é mantido pelo [Observatório Oceanográfico da UFF (Universidade Federal Fluminense)](https://observatoriooceanografico.org) e foi criado para agilizar tarefas repetitivas em notebooks voltados à pesquisa, ensino e extensão.  
+É voltado a pesquisadores, estudantes e profissionais que precisam de ferramentas práticas e reutilizáveis para análise de dados geoespaciais.
+
 
 Ele é baseado principalmente nas bibliotecas:
 - [`geemap`](https://github.com/giswqs/geemap)
@@ -19,9 +25,22 @@ Atualmente o `geemap-tools` inclui funções organizadas em submódulos:
 - `io.py`: Entrada e saída de ROIs e arquivos.
 - `clouds.py`: Máscara de nuvens e qualidade de imagem.
 - `catalog.py`: Listagem de imagens por ROI, satélite e intervalo.
-- `analysis.py`: Séries temporais por índice (NDVI, EVI...), CHIRPS, TerraClimate etc.
+- `analysis.py`: Séries temporais por índice (NDVI, EVI...), CHIRPS, TerraClimate, MapBiomas, Terrain, etc.
 - `sidra_tools.py`: Acesso programático à Tabela 5457 (Produção Agrícola Municipal – IBGE).
-- `dev/`: Área de desenvolvimento e testes – não será instalada como parte do pacote.
+- `private-dev/`: Área de desenvolvimento e testes – não será instalada como parte do pacote.
+
+## Uso
+> ⚠️ **Aviso sobre idioma dos avisos na tela**  
+> Este pacote foi originalmente desenvolvido para estudantes brasileiros, por isso **as mensagens de aviso e debug exibidas durante a execução aparecem em português**.  
+>  
+> Isso **não impede seu uso internacional**: todas as **funções, parâmetros e estruturas do código estão em inglês**, garantindo compatibilidade com qualquer ambiente Python.  
+>  
+> Para entender o funcionamento de cada módulo e função, consulte o arquivo [`USAGE.md`](./USAGE.md), que contém explicações bilíngues (Português/Inglês).
+
+Para instruções detalhadas, exemplos práticos e trechos de código, consulte o arquivo [USAGE.md](./USAGE.md).
+
+Todas as funções incluem docstrings bilíngues (português e inglês) para atender tanto usuários brasileiros quanto internacionais.
+
 
 ## Instalação Rápida
 

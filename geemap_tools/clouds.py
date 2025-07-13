@@ -4,17 +4,31 @@ import ee
 def custom_mask_clouds(img, debug=False):
     """
     Aplica uma máscara de nuvens personalizada a uma imagem do Earth Engine.
-
+    
     Suporta imagens com bandas QA_PIXEL (Landsat), SCL (Sentinel-2) ou MSK_CLDPRB (probabilidade de nuvem).
     Para Sentinel-2, utiliza a banda SCL com fallback para MSK_CLDPRB caso a máscara esteja completamente vazia.
-
-    Args:
+    
+    Parâmetros:
         img (ee.Image): Imagem de entrada contendo bandas de qualidade relacionadas a nuvens.
-        debug (bool, optional): Se True, imprime mensagens de depuração. Padrão é False.
-
-    Returns:
+        debug (bool, opcional): Se True, imprime mensagens de depuração. Padrão é False.
+    
+    Retorno:
         ee.Image: Imagem com nuvens mascaradas (pixels de nuvem removidos).
+    
+    ----
+    Apply a custom cloud mask to an Earth Engine image.
+    
+    Supports images with QA_PIXEL (Landsat), SCL (Sentinel-2), or MSK_CLDPRB (cloud probability) bands.
+    For Sentinel-2, uses the SCL band with fallback to MSK_CLDPRB if the mask is completely empty.
+    
+    Args:
+        img (ee.Image): Input image containing cloud-related quality bands.
+        debug (bool, optional): If True, prints debug messages. Default is False.
+    
+    Returns:
+        ee.Image: Image with clouds masked (cloud pixels removed).
     """
+
     bands = img.bandNames().getInfo()
 
     if 'QA_PIXEL' in bands:  # Landsat
@@ -57,18 +71,33 @@ def custom_mask_clouds(img, debug=False):
 def get_clear_sky_percentage(img, roi, debug=False):
     """
     Calcula a porcentagem de céu claro (sem nuvens) sobre uma ROI com base na máscara de nuvem da imagem.
-
+    
     Utiliza a função `custom_mask_clouds()` para aplicar a máscara apropriada à imagem.
     A porcentagem é obtida a partir da média da máscara binária (1 = claro, 0 = nublado) sobre a ROI.
-
-    Args:
+    
+    Parâmetros:
         img (ee.Image): Imagem do Earth Engine com bandas de máscara de nuvem.
         roi (ee.Geometry | ee.Feature | ee.FeatureCollection): Região de interesse.
-        debug (bool, optional): Se True, imprime mensagens de depuração. Padrão é False.
-
-    Returns:
+        debug (bool, opcional): Se True, imprime mensagens de depuração. Padrão é False.
+    
+    Retorno:
         float | None: Porcentagem de pixels com céu claro (0 a 100), ou None se falhar.
+    
+    ----
+    Computes the percentage of clear sky (cloud-free) pixels over a ROI based on the image's cloud mask.
+    
+    Uses the `custom_mask_clouds()` function to apply the appropriate mask to the image.
+    The percentage is calculated from the mean value of a binary mask (1 = clear, 0 = cloudy) over the ROI.
+    
+    Args:
+        img (ee.Image): Earth Engine image with cloud mask bands.
+        roi (ee.Geometry | ee.Feature | ee.FeatureCollection): Region of interest.
+        debug (bool, optional): If True, prints debug messages. Default is False.
+    
+    Returns:
+        float | None: Percentage of cloud-free pixels (0 to 100), or None if it fails.
     """
+
     try:
         band_names = img.bandNames()
         scale = 10  # padrão para Sentinel-2
