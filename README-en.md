@@ -1,5 +1,6 @@
 <p align="center">
-  <img src="geemap_tools_logo.png" alt="geemap-tools logo" width="150"/>
+  <img src="geemap_tools_logo.png" alt="geemap-tools logo" width="150" style="margin-right: 20px;"/>&nbsp;&nbsp;&nbsp;
+  <img src="penguin_sat.png" alt="penguin-sat logo" width="150"/>
 </p>
 
 # GEEMAP-TOOLS
@@ -7,6 +8,8 @@
 *Prefere a versão em português? Acesse [README.md](./README.md).*
 
 `geemap-tools` is a "helper" package designed to simplify the use of Google Earth Engine (GEE) and the `geemap` library. The project is maintained by the (**Oceanographic Observatory at UFF (Universidade Federal Fluminense)**)[https://observatoriooceanografico.org] and was created to streamline repetitive tasks in research, teaching, and outreach notebooks. It is tailored for researchers, students, and professionals who need practical, reusable tools for geospatial data analysis.
+
+In addition to the general routines, `geemap-tools` also includes specific functions developed for monitoring penguin colonies and studying the “greening” of Antarctic areas. These tools are part of the **Penguin Sat** project, within the **Antarctic Observatory**, and were designed to support polar ecology research and the detection of environmental changes using remote sensing.
 
 It is primarily built on top of the following libraries:
 - [`geemap`](https://github.com/giswqs/geemap)
@@ -25,6 +28,7 @@ The `geemap-tools` package currently includes functions organized into submodule
 - `catalog.py`: Image search by ROI, satellite, and time range.
 - `analysis.py`: Time series for vegetation indices (NDVI, EVI...), CHIRPS, TerraClimate, MapBiomas, Terrain, and more.
 - `sidra_tools.py`: Programmatic access to IBGE Table 5457 (Brazilian Municipal Agricultural Production).
+- **Penguin Sat**: A set of routines for detecting and monitoring penguin colonies and Antarctic vegetation (currently under development).
 - `private_dev/`: Development and testing area – not included in the installed package.
 - 
 ## Usage
