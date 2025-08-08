@@ -1,6 +1,8 @@
 <p align="center">
-  <img src="geemap_tools_logo.png" alt="geemap-tools logo" width="150"/>
+  <img src="geemap_tools_logo.png" alt="geemap-tools logo" width="150" style="margin-right: 20px;"/>&nbsp;&nbsp;&nbsp;
+  <img src="penguin_sat.png" alt="penguin-sat logo" width="150"/>
 </p>
+
 
 # GEEMAP-TOOLS
 
@@ -10,6 +12,7 @@
 O projeto é mantido pelo [Observatório Oceanográfico da UFF (Universidade Federal Fluminense)](https://observatoriooceanografico.org) e foi criado para agilizar tarefas repetitivas em notebooks voltados à pesquisa, ensino e extensão.  
 É voltado a pesquisadores, estudantes e profissionais que precisam de ferramentas práticas e reutilizáveis para análise de dados geoespaciais.
 
+Além das rotinas gerais, o `geemap-tools` também inclui funções específicas desenvolvidas para o monitoramento de colônias de pinguins e o estudo do “esverdeamento” de áreas antárticas. Essas ferramentas fazem parte do projeto **Penguin Sat**, do **Antarctic Observatory**, e foram criadas para apoiar pesquisas de ecologia polar e detecção de mudanças ambientais usando sensoriamento remoto.
 
 Ele é baseado principalmente nas bibliotecas:
 - [`geemap`](https://github.com/giswqs/geemap)
@@ -28,6 +31,7 @@ Atualmente o `geemap-tools` inclui funções organizadas em submódulos:
 - `catalog.py`: Listagem de imagens por ROI, satélite e intervalo.
 - `analysis.py`: Séries temporais por índice (NDVI, EVI...), CHIRPS, TerraClimate, MapBiomas, Terrain, etc.
 - `sidra_tools.py`: Acesso programático à Tabela 5457 (Produção Agrícola Municipal – IBGE).
+- **Penguin Sat**: Conjunto de rotinas para detecção e monitoramento de colônias de pinguins e vegetação antártica (ainda em desenvolvimento).
 - `private-dev/`: Área de desenvolvimento e testes – não será instalada como parte do pacote.
 
 ## Uso
