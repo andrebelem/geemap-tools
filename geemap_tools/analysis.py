@@ -338,10 +338,12 @@ def get_TerraClimate(
     df['date'] = pd.to_datetime(df['date'])
     df = df.sort_values('date').set_index('date')
 
-    # Trata None como NaN e tenta converter numéricos
+    # Trata None como NaN e tenta converter numéricos de forma segura
     df = df.replace({None: pd.NA})
     for col in df.columns:
-        df[col] = pd.to_numeric(df[col], errors="ignore")
+        # Converte valores numéricos; se não der, mantém o original
+        converted = pd.to_numeric(df[col], errors="coerce")
+        df[col] = converted.fillna(df[col])
 
     # ----- Aplica fatores de escala do TerraClimate -----
     for var in vars_selected:
