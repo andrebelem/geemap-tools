@@ -184,9 +184,16 @@ def describe_roi(roi, show_pixels_table=True, print_summary=True, pixel_res=None
     }
 
 
-def get_TerraClimate(roi, start="2000-01-01", end="2025-12-31",
-                     variables=["pr", "pet", "tmmx", "tmmn"],
-                     debug=False):
+def get_TerraClimate(
+    roi,
+    start="2000-01-01",
+    end="2025-12-31",
+    variables=None,
+    stats=None,
+    scale=4000,
+    maxPixels=1e13,
+    debug=False,
+):
     """
     Extrai estatísticas mensais da coleção TerraClimate para uma ROI.
 
@@ -196,57 +203,81 @@ def get_TerraClimate(roi, start="2000-01-01", end="2025-12-31",
         end (str): Data final no formato 'YYYY-MM-DD'.
         variables (list): Lista com variáveis desejadas.  
                           Opções válidas:
-                          ['aet', 'def', 'pdsi', 'pet', 'pr', 'q', 'soil',
-                           'swe', 'tmmx', 'tmmn', 'vap', 'vpd', 'ws']
+                          ['aet', 'def', 'pdsi', 'pet', 'pr', 'ro', 'soil',
+                           'srad', 'swe', 'tmmx', 'tmmn', 'vap', 'vpd', 'vs'].
+                          Default: ['pr', 'pet', 'srad', 'tmmx', 'tmmn'].
+        stats (list): Estatísticas desejadas entre:
+                      ['mean', 'median', 'min', 'max', 'stdDev'].
+                      Default: todas.
+        scale (int/float): Resolução em metros usada no reduceRegion.
+        maxPixels (float): maxPixels do reduceRegion.
         debug (bool): Se True, imprime mensagens de depuração.
 
     Returns:
-        pd.DataFrame: DataFrame com estatísticas mensais para cada variável selecionada.
-                      Cada variável terá colunas com os sufixos:
-                      _mean, _median, _max, _min, _stdDev.
-
-    ------------------------------------------------------------------------
-
-    Extracts monthly statistics from the TerraClimate collection for a given ROI.
-
-    Args:
-        roi (ee.Geometry): Region of interest.
-        start (str): Start date in 'YYYY-MM-DD' format.
-        end (str): End date in 'YYYY-MM-DD' format.
-        variables (list): List of desired variables.  
-                          Valid options:
-                          ['aet', 'def', 'pdsi', 'pet', 'pr', 'q', 'soil',
-                           'swe', 'tmmx', 'tmmn', 'vap', 'vpd', 'ws']
-        debug (bool): If True, prints debug messages.
-
-    Returns:
-        pd.DataFrame: DataFrame with monthly statistics for each selected variable.
-                      Each variable will have columns with the suffixes:
-                      _mean, _median, _max, _min, _stdDev.
+        pd.DataFrame: DataFrame com estatísticas mensais para cada variável
+                      e cada estatística selecionada, com colunas do tipo
+                      <variável>_<stat>, ex: pr_mean, tmmx_min, vs_stdDev.
     """
 
-    # Lista completa de variáveis disponíveis no TerraClimate
+    # ----- Variáveis disponíveis no TerraClimate -----
     valid_vars = [
-        'aet',  # Evapotranspiração real
-        'def',  # Déficit hídrico
-        'pdsi', # Índice de seca de Palmer
-        'pet',  # Evapotranspiração potencial
-        'pr',   # Precipitação
-        'q',    # Vazão superficial
-        'soil', # Umidade do solo
-        'swe',  # Equivalente em água da neve
-        'tmmx', # Temperatura máxima
-        'tmmn', # Temperatura mínima
-        'vap',  # Pressão de vapor
-        'vpd',  # Déficit de pressão de vapor
-        'ws'    # Velocidade do vento
+        'aet',  # Actual evapotranspiration
+        'def',  # Climate water deficit
+        'pdsi', # Palmer Drought Severity Index
+        'pet',  # Reference evapotranspiration
+        'pr',   # Precipitation
+        'ro',   # Runoff
+        'soil', # Soil moisture
+        'srad', # Downward surface shortwave radiation
+        'swe',  # Snow water equivalent
+        'tmmx', # Maximum temperature
+        'tmmn', # Minimum temperature
+        'vap',  # Vapor pressure
+        'vpd',  # Vapor pressure deficit
+        'vs'    # Wind-speed at 10 m
     ]
 
+    # Fatores de escala (Data Catalog: coluna "Scale")
+    # Valor_final = valor_bruto * scale_factor[var]
+    scale_factor = {
+        'aet': 0.1,
+        'def': 0.1,
+        'pdsi': 0.01,
+        'pet': 0.1,
+        'pr': 0.1,
+        'ro': 0.1,
+        'soil': 0.1,
+        'srad': 0.1,
+        'swe': 0.1,
+        'tmmx': 0.1,
+        'tmmn': 0.1,
+        'vap': 0.001,
+        'vpd': 0.01,
+        'vs': 0.01,
+    }
+
+    # Defaults de variáveis e estatísticas
+    if variables is None:
+        variables = ['pr', 'pet', 'srad', 'tmmx', 'tmmn']
+
+    valid_stats = ['mean', 'median', 'min', 'max', 'stdDev']
+    if stats is None:
+        stats = valid_stats.copy()
+
+    # Validação de variáveis e stats
     vars_selected = [v for v in variables if v in valid_vars]
     if len(vars_selected) == 0:
-        raise ValueError(f"Nenhuma variável válida selecionada. Use alguma das seguintes: {valid_vars}")
+        raise ValueError(
+            f"Nenhuma variável válida selecionada. Use alguma das seguintes: {valid_vars}"
+        )
 
-    # Carrega a coleção filtrada por ROI e datas
+    stats_selected = [s for s in stats if s in valid_stats]
+    if len(stats_selected) == 0:
+        raise ValueError(
+            f"Nenhuma estatística válida selecionada. Use alguma das seguintes: {valid_stats}"
+        )
+
+    # ----- Carrega coleção filtrada por ROI e datas -----
     terra = (
         ee.ImageCollection("IDAHO_EPSCOR/TERRACLIMATE")
         .select(vars_selected)
@@ -254,69 +285,243 @@ def get_TerraClimate(roi, start="2000-01-01", end="2025-12-31",
         .filterDate(start, end)
     )
 
-    # Redutor composto
-    reducer = (
-        ee.Reducer.mean()
-        .combine(ee.Reducer.median(), sharedInputs=True)
-        .combine(ee.Reducer.minMax(), sharedInputs=True)
-        .combine(ee.Reducer.stdDev(), sharedInputs=True)
-    )
+    n_img = terra.size().getInfo()
+    if n_img == 0:
+        raise ValueError("Nenhuma imagem TerraClimate disponível para esse período/ROI.")
 
-    # Função para extrair estatísticas por imagem mensal
+    # ----- Monta o redutor conforme as estatísticas solicitadas -----
+    reducer = None
+
+    if 'mean' in stats_selected:
+        reducer = ee.Reducer.mean()
+
+    if 'median' in stats_selected:
+        reducer = reducer.combine(ee.Reducer.median(), sharedInputs=True) if reducer \
+            else ee.Reducer.median()
+
+    if 'min' in stats_selected or 'max' in stats_selected:
+        reducer = reducer.combine(ee.Reducer.minMax(), sharedInputs=True) if reducer \
+            else ee.Reducer.minMax()
+
+    if 'stdDev' in stats_selected:
+        reducer = reducer.combine(ee.Reducer.stdDev(), sharedInputs=True) if reducer \
+            else ee.Reducer.stdDev()
+
+    # ----- Função para extrair estatísticas por imagem (mensal) -----
     def stats_by_month(img):
-        stats = img.reduceRegion(
+        stats_dict = img.reduceRegion(
             reducer=reducer,
             geometry=roi,
-            scale=4000,
-            maxPixels=1e9
+            scale=scale,
+            maxPixels=maxPixels
         )
 
         result = {'date': img.date().format("YYYY-MM")}
+
         for var in vars_selected:
-            for stat in ['mean', 'median', 'max', 'min', 'stdDev']:
-                result[f"{var}_{stat}"] = stats.get(f"{var}_{stat}")
+            for stat in stats_selected:
+                if stat in ['mean', 'median', 'stdDev']:
+                    key = f"{var}_{stat}"
+                elif stat == 'min':
+                    key = f"{var}_min"
+                elif stat == 'max':
+                    key = f"{var}_max"
+                else:
+                    continue
+                result[key] = stats_dict.get(key)
+
         return ee.Feature(None, result)
 
-    # Aplica a função
+    # Aplica a função em toda a coleção mensal
     features = ee.FeatureCollection(terra.map(stats_by_month))
 
-    # Converte para DataFrame
+    # ----- Converte para DataFrame -----
     df = geemap.ee_to_df(features)
+
+    # Converte coluna de data e ordena
     df['date'] = pd.to_datetime(df['date'])
     df = df.sort_values('date').set_index('date')
 
-    # Ajusta temperaturas (de décimos de grau para °C)
-    for tvar in ['tmmx', 'tmmn']:
-        if tvar in vars_selected:
-            for stat in ['mean', 'median', 'max', 'min', 'stdDev']:
-                col = f"{tvar}_{stat}"
-                if col in df.columns:
-                    df[col] = df[col] / 10.0
+    # Trata None como NaN e tenta converter numéricos
+    df = df.replace({None: pd.NA})
+    for col in df.columns:
+        df[col] = pd.to_numeric(df[col], errors="ignore")
 
-    # Define atributos com unidades
+    # ----- Aplica fatores de escala do TerraClimate -----
+    for var in vars_selected:
+        sf = scale_factor.get(var, 1.0)
+        for stat in stats_selected:
+            if stat in ['mean', 'median', 'stdDev']:
+                col = f"{var}_{stat}"
+            elif stat in ['min', 'max']:
+                col = f"{var}_{stat}"
+            else:
+                continue
+
+            if col in df.columns and sf != 1.0:
+                df[col] = df[col] * sf
+
+    # ----- Atributos de unidades -----
     units = {
         "aet": "mm",
         "def": "mm",
         "pdsi": "índice (adimensional)",
         "pet": "mm",
         "pr": "mm",
-        "q": "mm",
+        "ro": "mm",
         "soil": "mm",
+        "srad": "W/m^2",
         "swe": "mm",
         "tmmx": "°C",
         "tmmn": "°C",
         "vap": "kPa",
         "vpd": "kPa",
-        "ws": "m/s"
+        "vs": "m/s"
     }
     df.attrs = {f"{v}_unit": units[v] for v in vars_selected}
 
     if debug:
+        print(f"[DEBUG] Imagens na coleção: {n_img}")
         print(f"[DEBUG] Variáveis selecionadas: {vars_selected}")
+        print(f"[DEBUG] Estatísticas selecionadas: {stats_selected}")
         print(f"[DEBUG] Linhas retornadas: {len(df)}")
         print(f"[DEBUG] Colunas: {list(df.columns)}")
 
     return df
+
+#def get_TerraClimate(roi, start="2000-01-01", end="2025-12-31",
+#                     variables=["pr", "pet","srad","tmmx","tmmn"],
+#                     debug=False):
+#    """
+#    Extrai estatísticas mensais da coleção TerraClimate para uma ROI.
+#
+#    Args:
+#        roi (ee.Geometry): Região de interesse.
+#        start (str): Data inicial no formato 'YYYY-MM-DD'.
+#        end (str): Data final no formato 'YYYY-MM-DD'.
+#        variables (list): Lista com variáveis desejadas.  
+#                          Opções válidas:
+#                          ['aet', 'def', 'pdsi', 'pet', 'pr', 'q', 'soil',
+#                           'swe', 'tmmx', 'tmmn', 'vap', 'vpd', 'vs']
+#        debug (bool): Se True, imprime mensagens de depuração.
+#
+#    Returns:
+#        pd.DataFrame: DataFrame com estatísticas mensais para cada variável selecionada.
+#                      Cada variável terá colunas com os sufixos:
+#                      _mean, _median, _max, _min, _stdDev.
+#
+#    ------------------------------------------------------------------------
+#
+#    Extracts monthly statistics from the TerraClimate collection for a given ROI.
+#
+#    Args:
+#        roi (ee.Geometry): Region of interest.
+#        start (str): Start date in 'YYYY-MM-DD' format.
+#        end (str): End date in 'YYYY-MM-DD' format.
+#        variables (list): List of desired variables.  
+#                          Valid options:
+#                          ['aet', 'def', 'pdsi', 'pet', 'pr', 'soil',
+#                           'srad','swe', 'tmmx', 'tmmn', 'vap', 'vpd', 'vs']
+#        debug (bool): If True, prints debug messages.
+#
+#    Returns:
+#        pd.DataFrame: DataFrame with monthly statistics for each selected variable.
+#                      Each variable will have columns with the suffixes:
+#                      _mean, _median, _max, _min, _stdDev.
+#    """
+#
+#    # Lista completa de variáveis disponíveis no TerraClimate
+#    valid_vars = [
+#        'aet',  # Evapotranspiração real
+#        'def',  # Déficit hídrico
+#        'pdsi', # Índice de seca de Palmer
+#        'pet',  # Evapotranspiração potencial
+#        'pr',   # Precipitação
+#        'soil', # Umidade do solo
+#        'srad', # Radiação de ondas curtas da superfície para baixo
+#        'swe',  # Equivalente em água da neve
+#        'tmmx', # Temperatura máxima
+#        'tmmn', # Temperatura mínima
+#        'vap',  # Pressão de vapor
+#        'vpd',  # Déficit de pressão de vapor
+#        'vs'    # Velocidade do vento
+#    ]
+#
+#    vars_selected = [v for v in variables if v in valid_vars]
+#    if len(vars_selected) == 0:
+#        raise ValueError(f"Nenhuma variável válida selecionada. Use alguma das seguintes: {valid_vars}")
+#
+#    # Carrega a coleção filtrada por ROI e datas
+#    terra = (
+#        ee.ImageCollection("IDAHO_EPSCOR/TERRACLIMATE")
+#        .select(vars_selected)
+#        .filterBounds(roi)
+#        .filterDate(start, end)
+#    )
+#
+#    # Redutor composto
+#    reducer = (
+#        ee.Reducer.mean()
+#        .combine(ee.Reducer.median(), sharedInputs=True)
+#        .combine(ee.Reducer.minMax(), sharedInputs=True)
+#        .combine(ee.Reducer.stdDev(), sharedInputs=True)
+#    )
+#
+#    # Função para extrair estatísticas por imagem mensal
+#    def stats_by_month(img):
+#        stats = img.reduceRegion(
+#            reducer=reducer,
+#            geometry=roi,
+#            scale=4000,
+#            maxPixels=1e9
+#        )
+#
+#        result = {'date': img.date().format("YYYY-MM")}
+#        for var in vars_selected:
+#            for stat in ['mean', 'median', 'max', 'min', 'stdDev']:
+#                result[f"{var}_{stat}"] = stats.get(f"{var}_{stat}")
+#        return ee.Feature(None, result)
+#
+#    # Aplica a função
+#    features = ee.FeatureCollection(terra.map(stats_by_month))
+#
+#    # Converte para DataFrame
+#    df = geemap.ee_to_df(features)
+#    df['date'] = pd.to_datetime(df['date'])
+#    df = df.sort_values('date').set_index('date')
+#
+#    # Ajusta temperaturas (de décimos de grau para °C)
+#    for tvar in ['tmmx', 'tmmn']:
+#        if tvar in vars_selected:
+#            for stat in ['mean', 'median', 'max', 'min', 'stdDev']:
+#                col = f"{tvar}_{stat}"
+#                if col in df.columns:
+#                    df[col] = df[col] / 10.0
+#
+#    # Define atributos com unidades
+#    units = {
+#        "aet": "mm",
+#        "def": "mm",
+#        "pdsi": "índice (adimensional)",
+#        "pet": "mm",
+#        "pr": "mm",
+#        "srad": "W/m^2",
+#        "soil": "mm",
+#        "swe": "mm",
+#        "tmmx": "°C",
+#        "tmmn": "°C",
+#        "vap": "kPa",
+#        "vpd": "kPa",
+#        "vs": "m/s"
+#    }
+#    df.attrs = {f"{v}_unit": units[v] for v in vars_selected}
+#
+#    if debug:
+#        print(f"[DEBUG] Variáveis selecionadas: {vars_selected}")
+#        print(f"[DEBUG] Linhas retornadas: {len(df)}")
+#        print(f"[DEBUG] Colunas: {list(df.columns)}")
+#
+#    return df
 
 import ee
 import pandas as pd
