@@ -289,23 +289,13 @@ def get_TerraClimate(
     if n_img == 0:
         raise ValueError("Nenhuma imagem TerraClimate disponível para esse período/ROI.")
 
-    # ----- Monta o redutor conforme as estatísticas solicitadas -----
-    reducer = None
-
-    if 'mean' in stats_selected:
-        reducer = ee.Reducer.mean()
-
-    if 'median' in stats_selected:
-        reducer = reducer.combine(ee.Reducer.median(), sharedInputs=True) if reducer \
-            else ee.Reducer.median()
-
-    if 'min' in stats_selected or 'max' in stats_selected:
-        reducer = reducer.combine(ee.Reducer.minMax(), sharedInputs=True) if reducer \
-            else ee.Reducer.minMax()
-
-    if 'stdDev' in stats_selected:
-        reducer = reducer.combine(ee.Reducer.stdDev(), sharedInputs=True) if reducer \
-            else ee.Reducer.stdDev()
+    # ----- Monta o redutor (sempre completo) -----
+    reducer = (
+        ee.Reducer.mean()
+        .combine(ee.Reducer.median(), sharedInputs=True)
+        .combine(ee.Reducer.minMax(), sharedInputs=True)
+        .combine(ee.Reducer.stdDev(), sharedInputs=True)
+    )
 
     # ----- Função para extrair estatísticas por imagem (mensal) -----
     def stats_by_month(img):
@@ -319,18 +309,24 @@ def get_TerraClimate(
         result = {'date': img.date().format("YYYY-MM")}
 
         for var in vars_selected:
-            for stat in stats_selected:
-                if stat in ['mean', 'median', 'stdDev']:
-                    key = f"{var}_{stat}"
-                elif stat == 'min':
-                    key = f"{var}_min"
-                elif stat == 'max':
-                    key = f"{var}_max"
-                else:
-                    continue
-                result[key] = stats_dict.get(key)
+
+            if 'mean' in stats_selected:
+                result[f"{var}_mean"] = stats_dict.get(f"{var}_mean")
+
+            if 'median' in stats_selected:
+                result[f"{var}_median"] = stats_dict.get(f"{var}_median")
+
+            if 'min' in stats_selected:
+                result[f"{var}_min"] = stats_dict.get(f"{var}_min")
+
+            if 'max' in stats_selected:
+                result[f"{var}_max"] = stats_dict.get(f"{var}_max")
+
+            if 'stdDev' in stats_selected:
+                result[f"{var}_stdDev"] = stats_dict.get(f"{var}_stdDev")
 
         return ee.Feature(None, result)
+
 
     # Aplica a função em toda a coleção mensal
     features = ee.FeatureCollection(terra.map(stats_by_month))
