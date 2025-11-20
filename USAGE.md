@@ -79,25 +79,29 @@ dict: {
 "df": DataFrame with the table (if show_pixels_table=True)
 }
 
-### `get_TerraClimate(roi, start="2000-01-01", end="2025-12-31",
-                     variables=["pr", "pet", "tmmx", "tmmn"],
-                     debug=False)`
+### `get_TerraClimate(roi, start="2000-01-01", end="2025-12-31", variables=None, stats=None, scale=4000, maxPixels=1e13, debug=False)`
+
 
 Extrai estatísticas mensais da coleção TerraClimate para uma ROI.
 
 Args:
-roi (ee.Geometry): Região de interesse.
-start (str): Data inicial no formato 'YYYY-MM-DD'.
-end (str): Data final no formato 'YYYY-MM-DD'.
-variables (list): Lista com variáveis desejadas.
-Opções válidas:
-['aet', 'def', 'pdsi', 'pet', 'pr', 'q', 'soil',
-'swe', 'tmmx', 'tmmn', 'vap', 'vpd', 'ws']
-debug (bool): Se True, imprime mensagens de depuração.
+- **roi (ee.Geometry)**: Região de interesse.
+- **start (str)**: Data inicial no formato `YYYY-MM-DD`.
+- **end (str)**: Data final no formato `YYYY-MM-DD`.
+- **variables (list)**: Lista de variáveis desejadas.  
+  Opções válidas:  
+  `['aet', 'def', 'pdsi', 'pet', 'pr', 'ro', 'soil', 'srad', 'swe', 'tmmx', 'tmmn', 'vap', 'vpd', 'vs']`  
+  Default: `['pr', 'pet', 'srad', 'tmmx', 'tmmn']`
+- **stats (list)**: Estatísticas desejadas.  
+  Opções: `['mean', 'median', 'min', 'max', 'stdDev']`  
+  Default: todas.
+- **scale (int/float)**: Resolução (m) usada pelo `reduceRegion`.
+- **maxPixels (float)**: Limite máximo de pixels processados.
+- **debug (bool)**: Se True, imprime mensagens de depuração.
 
 Returns:
-pd.DataFrame: DataFrame com estatísticas mensais para cada variável selecionada.
-Cada variável terá colunas com os sufixos:
+Retorna um `pandas.DataFrame` contendo estatísticas mensais para cada variável e estatística solicitada.  
+As colunas seguem o padrão:
 _mean, _median, _max, _min, _stdDev.
 
 ------------------------------------------------------------------------
@@ -105,17 +109,22 @@ _mean, _median, _max, _min, _stdDev.
 Extracts monthly statistics from the TerraClimate collection for a given ROI.
 
 Args:
-roi (ee.Geometry): Region of interest.
-start (str): Start date in 'YYYY-MM-DD' format.
-end (str): End date in 'YYYY-MM-DD' format.
-variables (list): List of desired variables.
-Valid options:
-['aet', 'def', 'pdsi', 'pet', 'pr', 'q', 'soil',
-'swe', 'tmmx', 'tmmn', 'vap', 'vpd', 'ws']
-debug (bool): If True, prints debug messages.
+- **roi (ee.Geometry)**: Region of interest.
+- **start (str)**: Start date in `YYYY-MM-DD` format.
+- **end (str)**: End date in `YYYY-MM-DD` format.
+- **variables (list)**: List of desired variables.  
+  Valid options:  
+  `['aet', 'def', 'pdsi', 'pet', 'pr', 'ro', 'soil', 'srad', 'swe', 'tmmx', 'tmmn', 'vap', 'vpd', 'vs']`  
+  Default: `['pr', 'pet', 'srad', 'tmmx', 'tmmn']`
+- **stats (list)**: List of statistics to compute.  
+  Options: `['mean', 'median', 'min', 'max', 'stdDev']`  
+  Default: all.
+- **scale (int/float)**: Spatial resolution (meters) used in `reduceRegion`.
+- **maxPixels (float)**: Maximum pixel limit for processing.
+- **debug (bool)**: If True, prints debug information.
 
 Returns:
-pd.DataFrame: DataFrame with monthly statistics for each selected variable.
+pd.DataFrame: DataFrame with monthly statistics for each selected variable.A `pandas.DataFrame` with monthly statistics for each selected variable and statistic.
 Each variable will have columns with the suffixes:
 _mean, _median, _max, _min, _stdDev.
 
